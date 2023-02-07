@@ -138,6 +138,8 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
     cameraMatrix[1] = initCameraMatrix2D(objectPoints,imagePoints[1],imageSize,0);
     Mat R, T, E, F;
 
+    cout << "Object points: " << objectPoints << endl;
+
     double rms = stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
                                  cameraMatrix[0], distCoeffs[0],
                                  cameraMatrix[1], distCoeffs[1],
@@ -149,6 +151,7 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
                                  CALIB_RATIONAL_MODEL +
                                  CALIB_FIX_K3 + CALIB_FIX_K4 + CALIB_FIX_K5,
                                  TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 100, 1e-5) );
+
     cout << "done with RMS error=" << rms << endl;
 
 // CALIBRATION QUALITY CHECK
@@ -159,18 +162,15 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
     double err = 0;
     int npoints = 0;
     vector<Vec3f> lines[2];
-    for( i = 0; i < nimages; i++ )
-    {
+    for(i = 0; i < nimages; i++) {
         int npt = (int)imagePoints[0][i].size();
         Mat imgpt[2];
-        for( k = 0; k < 2; k++ )
-        {
+        for(k = 0; k < 2; k++) {
             imgpt[k] = Mat(imagePoints[k][i]);
             undistortPoints(imgpt[k], imgpt[k], cameraMatrix[k], distCoeffs[k], Mat(), cameraMatrix[k]);
             computeCorrespondEpilines(imgpt[k], k+1, F, lines[k]);
         }
-        for( j = 0; j < npt; j++ )
-        {
+        for(j = 0; j < npt; j++) {
             double errij = fabs(imagePoints[0][i][j].x*lines[1][j][0] +
                                 imagePoints[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
                            fabs(imagePoints[1][i][j].x*lines[0][j][0] +
@@ -183,14 +183,14 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
 
     // save intrinsic parameters
     FileStorage fs("intrinsics.yml", FileStorage::WRITE);
-    if( fs.isOpened() )
-    {
+    if(fs.isOpened()) {
         fs << "M1" << cameraMatrix[0] << "D1" << distCoeffs[0] <<
            "M2" << cameraMatrix[1] << "D2" << distCoeffs[1];
         fs.release();
     }
-    else
+    else {
         cout << "Error: can not save the intrinsic parameters\n";
+    }
 
     Mat R1, R2, P1, P2, Q;
     Rect validRoi[2];
@@ -201,41 +201,43 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
                   CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
 
     fs.open("extrinsics.yml", FileStorage::WRITE);
-    if( fs.isOpened() )
-    {
+    if(fs.isOpened()) {
         fs << "R" << R << "T" << T << "R1" << R1 << "R2" << R2 << "P1" << P1 << "P2" << P2 << "Q" << Q;
         fs.release();
     }
-    else
+    else {
         cout << "Error: can not save the extrinsic parameters\n";
+    }
 
     // OpenCV can handle left-right
     // or up-down camera arrangements
     bool isVerticalStereo = fabs(P2.at<double>(1, 3)) > fabs(P2.at<double>(0, 3));
 
-// COMPUTE AND DISPLAY RECTIFICATION
-    if( !showRectified )
+    // COMPUTE AND DISPLAY RECTIFICATION
+    if(!showRectified) {
         return;
+    }
 
     Mat rmap[2][2];
-// IF BY CALIBRATED (BOUGUET'S METHOD)
-    if( useCalibrated )
-    {
+    // IF BY CALIBRATED (BOUGUET'S METHOD)
+    if(useCalibrated) {
         // we already computed everything
     }
-// OR ELSE HARTLEY'S METHOD
-    else
+    // OR ELSE HARTLEY'S METHOD
+    else {
         // use intrinsic parameters of each camera, but
         // compute the rectification transformation directly
         // from the fundamental matrix
-    {
         vector<Point2f> allimgpt[2];
-        for( k = 0; k < 2; k++ )
-        {
-            for( i = 0; i < nimages; i++ )
+        for(k = 0; k < 2; k++) {
+            for (i = 0; i < nimages; i++) {
                 std::copy(imagePoints[k][i].begin(), imagePoints[k][i].end(), back_inserter(allimgpt[k]));
+            }
         }
+
+        // get the fundamental matrix of the images
         F = findFundamentalMat(Mat(allimgpt[0]), Mat(allimgpt[1]), FM_8POINT, 0, 0);
+        // allocate stack space for two matrices, one for each height
         Mat H1, H2;
         stereoRectifyUncalibrated(Mat(allimgpt[0]), Mat(allimgpt[1]), F, imageSize, H1, H2, 3);
 
@@ -252,48 +254,58 @@ StereoCalib(const vector<string>& imagelist, Size boardSize, float squareSize, b
     Mat canvas;
     double sf;
     int w, h;
-    if( !isVerticalStereo )
-    {
+    if(!isVerticalStereo) {
         sf = 600./MAX(imageSize.width, imageSize.height);
         w = cvRound(imageSize.width*sf);
         h = cvRound(imageSize.height*sf);
         canvas.create(h, w*2, CV_8UC3);
     }
-    else
-    {
+    else {
         sf = 300./MAX(imageSize.width, imageSize.height);
         w = cvRound(imageSize.width*sf);
         h = cvRound(imageSize.height*sf);
         canvas.create(h*2, w, CV_8UC3);
     }
 
-    for( i = 0; i < nimages; i++ )
-    {
-        for( k = 0; k < 2; k++ )
-        {
+    // loop through provided images
+    for(i = 0; i < nimages; i++) {
+        // do two loops
+        for(k = 0; k < 2; k++) {
+            // read in the image
             Mat img = imread(goodImageList[i*2+k], IMREAD_GRAYSCALE), rimg, cimg;
+            // black magic
             remap(img, rimg, rmap[k][0], rmap[k][1], INTER_LINEAR);
             cvtColor(rimg, cimg, COLOR_GRAY2BGR);
+            // make a canvas based off of vertical or horizontal stereo setup
             Mat canvasPart = !isVerticalStereo ? canvas(Rect(w*k, 0, w, h)) : canvas(Rect(0, h*k, w, h));
+            // resize the image to be the same as the canvas
             resize(cimg, canvasPart, canvasPart.size(), 0, 0, INTER_AREA);
-            if( useCalibrated )
-            {
+            // if using already calibrated data (ignore this)
+            if (useCalibrated) {
                 Rect vroi(cvRound(validRoi[k].x*sf), cvRound(validRoi[k].y*sf),
                           cvRound(validRoi[k].width*sf), cvRound(validRoi[k].height*sf));
                 rectangle(canvasPart, vroi, Scalar(0,0,255), 3, 8);
             }
         }
 
-        if( !isVerticalStereo )
-            for( j = 0; j < canvas.rows; j += 16 )
+        // if its horizontal
+        if(!isVerticalStereo) {
+            for (j = 0; j < canvas.rows; j += 16) {
+                // make a horizontal line
                 line(canvas, Point(0, j), Point(canvas.cols, j), Scalar(0, 255, 0), 1, 8);
-        else
-            for( j = 0; j < canvas.cols; j += 16 )
+            }
+        }
+        // if its vertical (ignore this)
+        else {
+            for (j = 0; j < canvas.cols; j += 16) {
                 line(canvas, Point(j, 0), Point(j, canvas.rows), Scalar(0, 255, 0), 1, 8);
+            }
+        }
         imshow("rectified", canvas);
-        char c = (char)waitKey();
-        if( c == 27 || c == 'q' || c == 'Q' )
+        char c = (char) waitKey();
+        if(c == 27 || c == 'q' || c == 'Q') {
             break;
+        }
     }
 }
 
