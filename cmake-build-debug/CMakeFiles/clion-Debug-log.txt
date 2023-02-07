@@ -1,0 +1,9 @@
+/home/caleb/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/223.8617.54/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/caleb/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/223.8617.54/bin/ninja/linux/x64/ninja -G Ninja -S /mnt/HDD/coding/stereoCalibrationRemake -B /mnt/HDD/coding/stereoCalibrationRemake/cmake-build-debug
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found CUDA: /usr/local/cuda (found suitable exact version "11.7") 
+-- Found OpenCV: /usr/local (found version "4.6.0") 
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /mnt/HDD/coding/stereoCalibrationRemake/cmake-build-debug
